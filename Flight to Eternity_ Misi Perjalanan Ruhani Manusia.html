@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Flight to Eternity</title>
+<style>
+:root{--bg:#0B132B;--em:#006A4E;--gd:#FFD700;--cy:#E0FBFC}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--cy);font-family:system-ui,sans-serif;overflow:hidden}
+#w{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#ov{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;background:rgba(5,9,25,.82);touch-action:pan-y}
+.pn{width:min(94vw,640px);max-height:94vh;overflow:auto;background:#0B132Bf2;border:2px solid var(--gd);border-radius:14px;padding:14px;touch-action:pan-y;font-size:14px}
+.pn *{touch-action:pan-y}
+h1,h2,h3{color:var(--gd);margin:4px 0 8px}h1{font-size:22px}h3{font-size:15px;line-height:1.4}
+.g{color:var(--gd)}.s{font-size:11px;opacity:.8}
+.cd{background:#006A4E55;border-left:4px solid var(--gd);padding:8px;border-radius:8px;margin-bottom:8px;font-size:13px}
+input,select{width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--gd);background:#16224a;color:var(--cy);font-size:14px}
+button{background:var(--em);color:var(--cy);border:1px solid var(--gd);border-radius:10px;padding:10px;margin:4px 0;width:100%;font-size:14px;text-align:left}
+button.ok{background:#0a8a42}button.no{background:#8a1a1a}
+p.ok{color:#7dffb0}p.no{color:#ff9a9a}
+.gr{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ic{text-align:center;font-size:24px;padding:8px 2px}.ic small{display:block;font-size:10px}
+#bt{position:fixed;top:6px;right:6px;z-index:6;display:flex;gap:6px}
+#bt button{width:38px;padding:6px;text-align:center;margin:0;background:#0B132Bcc}
+#joy{position:fixed;left:18px;bottom:18px;width:120px;height:120px;border-radius:50%;border:2px solid #FFD70088;background:#E0FBFC18;z-index:5;display:flex;align-items:center;justify-content:center}
+#kn{width:46px;height:46px;border-radius:50%;background:#FFD700aa}
+#fire{position:fixed;right:22px;bottom:24px;width:100px;height:100px;border-radius:50%;border:2px solid var(--gd);background:#006A4Ecc;z-index:5;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gd)}
+.bdg{font-size:20px;color:var(--gd);text-align:center;border:2px solid var(--gd);border-radius:12px;padding:8px;margin:8px 0}
+</style></head><body>
+<div id="w"><canvas id="c" width="800" height="400"></canvas></div>
+<div id="bt"><button onclick="pause()">⏸</button><button id="mb" onclick="tm()">🔊</button></div>
+<div id="joy"><div id="kn"></div></div><div id="fire">TEMBAK</div>
+<div id="ov"></div>
+<script>
+const GAS_URL=""; // Tempel URL Web App Google Apps Script di sini (opsional, untuk rekap online)
+const W=800,H=400,C=document.getElementById("c"),X=C.getContext("2d"),$=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sg=k=>{try{return localStorage.getItem(k)}catch(e){return null}},ss=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+let P={name:"",nim:"",prodi:"D3 Keperawatan"},G=null,K={},jv={x:0,y:0},fh=false,mute=false,st="menu",acc={c:0,t:0},score=0,last=0;
+try{P=Object.assign(P,JSON.parse(sg("fte_p")||"{}"))}catch(e){}
+const LV=[
+{n:"Alam Ruh & Rahim",b:["#0B132B","#16306b"],nb:["rgba(255,215,0,.2)","rgba(40,90,200,.3)"],sc:"#E0FBFC",nar:"Allah mengambil kesaksian ruh anak Adam: 'Alastu birabbikum?' — 'Balā syahidnā.' Di rahim, takdirmu ditetapkan. Si Ignoransi menyebar Komet Syubhat. Kumpulkan Orb Amal dan sentuh 4 Beacon Ilmu!"},
+{n:"Alam Dunia",b:["#0B132B","#0f3d3a"],nb:["rgba(0,106,78,.35)","rgba(60,140,255,.2)"],sc:"#E0FBFC",nar:"Dunia adalah ladang akhirat (mazra'atul akhirah). Sakit, ujian, dan pelayanan kesehatan adalah ladang amal bila diniatkan ibadah. Lewati sabuk asteroid syubhat!"},
+{n:"Alam Barzakh",b:["#05070f","#1a1030"],nb:["rgba(120,90,200,.25)","rgba(0,0,0,.3)"],sc:"#9aa6c8",nar:"Kullu nafsin dzaaiqatul maut. Barzakh adalah sekat antara dunia dan akhirat; hanya tiga amal yang tak terputus. Kini soal berupa studi kasus profesi kesehatan."},
+{n:"Yaumul Qiyamah",b:["#2a0508","#0B132B"],nb:["rgba(255,60,30,.3)","rgba(255,160,0,.2)"],sc:"#ffb4a0",nar:"Ba'ats, Mahsyar, Hisab, Mizan. Sekecil apa pun amal ditimbang, termasuk kejujuran rekam medis dan ketulusan merawat pasien."},
+{n:"Shirat & Akhirat",b:["#0B132B","#000"],nb:["rgba(255,215,0,.3)","rgba(0,0,0,.5)"],sc:"#FFD700",nar:"Catatan amal dibagikan, Shirat terbentang, Surga dan Neraka menanti. Di ujung perjalanan, Si Ignoransi menghadang dengan mahkota retaknya."}];
+// [kartu, soal, BENAR, salah1, salah2, salah3, pembahasan]
+const QB=[[
+["Perjanjian Azali: di alam ruh, seluruh keturunan Adam bersaksi atas ketuhanan Allah (QS. Al-A'raf: 172).","Dalam QS. Al-A'raf: 172 Allah bertanya 'Alastu birabbikum?'. Jawaban ruh manusia adalah...","Balā syahidnā (benar, kami bersaksi)","Kami belum mengetahui","Kami akan menjawab di dunia","Kami menolak bersaksi","Seluruh ruh bersaksi bahwa Allah Rabb mereka; inilah fitrah tauhid manusia."],
+["Setelah 120 hari di rahim, malaikat meniupkan ruh dan menuliskan empat ketetapan (HR. Bukhari & Muslim).","Empat ketetapan yang dituliskan di alam rahim adalah...","Rezeki, ajal, amal, dan bahagia/celaka","Nama, jodoh, tempat lahir, warna kulit","Pendidikan, jabatan, harta, usia","Kesehatan, kecantikan, kekuatan, kecerdasan","Hadis Ibnu Mas'ud: rezeki, ajal, amal, dan sengsara/bahagia."],
+["Manusia adalah 'abd (hamba) sekaligus khalifah di bumi (QS. Adz-Dzariyat: 56; Al-Baqarah: 30).","Tujuan penciptaan manusia menurut QS. Adz-Dzariyat: 56 adalah...","Beribadah kepada Allah","Mengumpulkan harta","Mencari kedudukan","Menikmati dunia sepuasnya","Kekhalifahan adalah amanah mengelola bumi dalam rangka ibadah."],
+["Fitrah: manusia lahir membawa kecenderungan bertauhid (QS. Ar-Rum: 30).","Kecenderungan bertauhid yang melekat sejak lahir akibat perjanjian azali disebut...","Fitrah","Syubhat","Syahwat","Ghaflah","Fitrah adalah kondisi asal yang lurus; lingkungan dapat menutupinya."]],[
+["Dunia adalah mazra'atul akhirah: ladang menanam amal yang dipanen di akhirat.","Makna dunia sebagai 'mazra'atul akhirah' adalah...","Tempat menanam amal untuk dipetik di akhirat","Tujuan akhir kehidupan","Tempat menetap selamanya","Arena mengumpulkan kekayaan","Dunia sarana, akhirat tujuan (QS. Al-Qashash: 77)."],
+["Sakit bagi mukmin adalah ujian sekaligus penggugur dosa bila disikapi dengan sabar (HR. Bukhari & Muslim).","Sikap tepat seorang muslim ketika sakit adalah...","Sabar, berikhtiar berobat, dan bertawakal","Berputus asa dan menyalahkan takdir","Menolak semua pengobatan","Mengandalkan dukun","Berobat dianjurkan (HR. Abu Dawud) dan hasilnya diserahkan kepada Allah."],
+["Innamal a'malu binniyyat: amal bergantung pada niatnya (HR. Bukhari & Muslim).","Perawat dan perekam medis yang meniatkan pelayanannya karena Allah, maka pekerjaannya...","Bernilai ibadah selama niat lurus dan sesuai syariat","Tetap bernilai duniawi saja","Tidak berpahala karena digaji","Berpahala tanpa memerlukan niat","Niat yang benar mengubah rutinitas profesi menjadi ibadah."],
+["Allah menguji manusia dengan keburukan dan kebaikan (QS. Al-Anbiya: 35).","Menurut QS. Al-Anbiya: 35, kesenangan maupun kesulitan di dunia merupakan...","Ujian dari Allah","Hukuman semata","Kebetulan alam","Hak yang pasti didapat","Senang dan susah sama-sama ujian: syukur dan sabar."]],[
+["Kullu nafsin dzaaiqatul maut (QS. Ali Imran: 185). Orang yang akan wafat ditalqin kalimat tauhid (HR. Muslim).","Perawat mendampingi pasien muslim yang sakaratul maut dan keluarganya panik. Tindakan paling tepat...","Menenangkan keluarga dan menuntun pasien dengan lembut mengucap laa ilaaha illallah","Meminta keluarga keluar tanpa penjelasan","Fokus pada alat dan mengabaikan aspek spiritual","Memaksa pasien mengucap syahadat keras-keras berulang","Talqin dilakukan lembut, tanpa memaksa, disertai empati pada keluarga."],
+["Di kubur ditanyakan: Man Rabbuka, Ma Dinuka, Man Nabiyyuka (HR. Abu Dawud).","Mahasiswa merasa cukup menghafal jawaban Munkar-Nakir tanpa memperbaiki amal. Analisis yang benar...","Keteguhan menjawab adalah buah iman dan amal selama hidup (QS. Ibrahim: 27)","Hafalan saja pasti menyelamatkan","Pertanyaan kubur tidak perlu dipersiapkan","Amal tidak berpengaruh","Allah meneguhkan orang beriman dengan ucapan yang teguh, hasil pembiasaan iman di dunia."],
+["Tiga amal tak terputus: sedekah jariyah, ilmu bermanfaat, anak saleh yang mendoakan (HR. Muslim).","Mahasiswa MIKES menyusun panduan pengisian rekam medis yang dipakai rekan bertahun-tahun. Dalam hadis, ini termasuk...","Ilmu yang bermanfaat, pahalanya mengalir setelah wafat","Sedekah jariyah","Anak saleh yang mendoakan","Amal yang terputus saat meninggal","Ilmu yang terus dimanfaatkan mengalirkan pahala bagi pengajarnya."],
+["Alam barzakh adalah perkara gaib yang diimani berdasarkan wahyu (QS. Al-Baqarah: 3).","Seorang mahasiswa berkata nikmat dan siksa kubur tak perlu dipercaya karena tidak dapat diamati ilmiah. Tanggapan akidah yang tepat...","Perkara gaib wajib diimani karena bersumber dari wahyu yang pasti benar","Sains membatalkan wahyu","Tidak penting diyakini","Cukup dipercaya jika terbukti di laboratorium","Metode ilmiah terbatas pada yang inderawi; wahyu memberi kabar gaib."]],[
+["Mizan menimbang amal sekecil apa pun (QS. Al-Zalzalah: 7-8).","Perawat menunda pemberian obat karena lalai dan tak ada yang tahu. Perspektif mizan menunjukkan...","Kelalaian itu tetap tercatat dan ditimbang, sekecil apa pun","Aman karena tidak diketahui manusia","Hanya dosa besar yang ditimbang","Ditimbang hanya jika pasien mengeluh","Allah Maha Mengetahui; seberat zarrah keburukan pun akan dilihat balasannya."],
+["Kejujuran rekam medis adalah amanah dan pemberat timbangan kebaikan.","Staf MIKES menemukan salah input diagnosis yang belum diketahui atasan. Tindakan yang memberatkan timbangan kebaikan...","Melaporkan dan memperbaikinya sesuai prosedur","Membiarkan agar tak dipermasalahkan","Menghapus jejak perubahan","Menyalahkan rekan","Menunaikan amanah data pasien adalah amal saleh (QS. An-Nisa: 58)."],
+["Pada hisab, mulut dikunci dan anggota badan bersaksi (QS. Yasin: 65).","Seorang tenaga kesehatan berdalih 'tidak ada CCTV yang melihat pelanggaran saya'. Tinjauan hisab...","Tidak ada yang tersembunyi; catatan malaikat dan anggota badan bersaksi","Dalih itu benar adanya","Hisab hanya berlaku bagi yang tertangkap","Saksi hanya manusia","Allah mengetahui yang tersembunyi dan kelak tubuh memberi kesaksian."],
+["Allah menimbang dengan adil; tidak ada yang dizalimi (QS. Al-Anbiya: 47).","Perawat merawat pasien tidak mampu tanpa pamrih dan publikasi. Menurut mizan, perbuatannya...","Ditimbang adil dan berpahala sesuai keikhlasannya","Tidak berarti karena tak dipublikasikan","Tidak dihitung","Dihitung hanya jika dibayar","Keikhlasan memperberat timbangan amal."]],[
+["Catatan amal: tangan kanan bagi yang selamat, tangan kiri bagi yang celaka (QS. Al-Haqqah: 19-25).","Seseorang menerima kitab catatan amal dengan tangan kanan. Hal itu menandakan...","Keselamatan dan hisab yang mudah","Kecelakaan dan azab","Amalnya belum ditimbang","Ia harus mengulang hisab","Penerima kitab dengan tangan kanan bergembira dan dihisab dengan mudah."],
+["Shirat adalah jembatan di atas Jahannam; kecepatan melintasnya sesuai amal (HR. Muslim).","Mahasiswa bertanya mengapa beramal kecil secara konsisten penting bila memikirkan shirat. Analisis...","Melintasi shirat sesuai kadar iman dan amal, maka konsistensi amal sangat berharga","Shirat bergantung keturunan","Semua melintas sama cepat","Amal kecil tidak berarti","Amal yang kontinu meski sedikit paling dicintai Allah (HR. Bukhari & Muslim)."],
+["Surga diraih dengan rahmat Allah; amal adalah sebab (HR. Bukhari & Muslim).","Perawat berprestasi merasa pasti masuk surga karena amalnya. Pandangan akidah yang benar...","Amal adalah sebab, namun masuk surga karena rahmat Allah","Amal sepenuhnya menjamin surga","Amal tidak diperlukan","Rahmat tidak berperan","Rasulullah ﷺ bersabda tak seorang pun masuk surga karena amalnya semata kecuali dengan rahmat Allah."],
+["Si Ignoransi mewakili sekularisme: memisahkan dunia dari akhirat.","Rekan berkata 'urusan pekerjaan tidak ada kaitannya dengan akhirat'. Tanggapan paling tepat...","Pekerjaan bernilai ibadah dan akan dipertanggungjawabkan di akhirat","Setuju, agama hanya urusan masjid","Akhirat hanya soal ritual","Dunia dan akhirat tidak berkaitan","Islam mengintegrasikan dunia dan akhirat (QS. Al-Qashash: 77)."]]];
+const BQ=[
+["","Keluarga pasien menawarkan hadiah agar anaknya didahulukan dari antrean. Perspektif hisab dan etika profesi...","Menolak dan melayani sesuai prioritas klinis secara adil","Menerima karena niat baik","Menerima asal tidak ketahuan","Menerima lalu membagikannya ke rekan","Rasulullah melaknat penyuap dan penerima suap (HR. Abu Dawud); keadilan pelayanan adalah amanah."],
+["","Atasan meminta staf MIKES mengubah data rekam medis demi akreditasi. Menurut mizan...","Menolak memalsukan data karena kejujuran adalah amanah yang ditimbang","Menurut agar aman","Mengubah sedikit saja","Mengubah asal bermanfaat","Khianat amanah dilarang (QS. Al-Anfal: 27); tak ada ketaatan pada makhluk dalam maksiat."],
+["","Pasien terminal bertanya, 'Mengapa saya sakit?'. Respons perawat yang sesuai...","Menguatkan sabar, ridha, dan husnuzan kepada Allah serta mendoakan tanpa menakut-nakuti","Menyatakan sakit itu pasti azab","Menghindari percakapan","Menjanjikan pasti sembuh","Sakit menggugurkan dosa (HR. Bukhari & Muslim); pendampingan spiritual dilakukan dengan empati."],
+["","Seorang perawat membagikan data pasien di media sosial. Perspektif mizan dan etika profesi...","Pelanggaran amanah rahasia pasien yang akan dipertanggungjawabkan","Boleh bila nama disamarkan sebagian","Boleh bila menjadi viral","Tidak masalah","Rahasia pasien adalah amanah; majelis berlandaskan amanah (HR. Abu Dawud)."],
+["","Setelah bertahun-tahun lembur, seorang perawat merasa amalnya pasti diterima. Tanggapan...","Waspada ujub; amal diterima dengan ikhlas, ittiba', dan rahmat Allah","Pasti diterima","Cukup banyak amal","Amal tak perlu dikoreksi","Ujub dapat merusak pahala; orang beriman beramal dengan hati takut dan berharap (QS. Al-Mu'minun: 60)."],
+["","Si Ignoransi berkata hidup berakhir saat mati. Jawaban yang meneguhkan tujuan hidup...","Inna lillahi wa inna ilaihi raji'un: dari Allah dan kembali kepada-Nya","Hidup hanya sekali tanpa akhir","Setelah mati menjadi tanah selamanya","Hidup untuk dunia semata","QS. Al-Baqarah: 156: hidup adalah perjalanan dari Allah kembali kepada Allah."]];
+// Audio
+let AC;function snd(f,d,t="square",v=.04){if(mute)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+function tm(){mute=!mute;$("mb").textContent=mute?"🔇":"🔊"}
+// Overlay
+function ov(h){const o=$("ov");o.innerHTML="<div class=pn>"+h+"</div>";o.style.display="flex"}
+function hov(){$("ov").style.display="none"}
+function menu(){st="menu";const ck=JSON.parse(sg("fte_ck")||"null");
+ov(`<h1>✈ Flight to Eternity</h1><p class=g>Misi Perjalanan Ruhani Manusia · AIK 1</p><p>Perjalanan Manusia dari Allah Kembali kepada Allah (Fase Eskatologis).</p>
+<input id=nm placeholder="Nama Lengkap" value="${esc(P.name)}"><input id=ni placeholder="NIM" value="${esc(P.nim)}">
+<select id=pr><option${P.prodi=="D3 Keperawatan"?" selected":""}>D3 Keperawatan</option><option${P.prodi=="S1 MIKES"?" selected":""}>S1 MIKES</option></select>
+<button onclick="go(0,0)">▶ Mulai Baru</button>${ck?`<button onclick="go(${ck.l},1)">⏩ Lanjutkan dari Level ${ck.l+1}</button>`:""}
+<p class=s>High Score: ${sg("fte_hs")||0} · Panah/WASD = gerak, Spasi/X = tembak, P = jeda. Berjalan offline.</p>`)}
+function go(l,c){const n=$("nm").value.trim(),i=$("ni").value.trim();if(!n||!i){alert("Isi Nama Lengkap dan NIM dahulu.");return}
+P={name:n,nim:i,prodi:$("pr").value};ss("fte_p",JSON.stringify(P));
+if(c){const k=JSON.parse(sg("fte_ck"));score=k.s;acc={c:k.c,t:k.t}}else{score=0;acc={c:0,t:0}}intro(l)}
+function intro(l){ss("fte_ck",JSON.stringify({l,s:score,c:acc.c,t:acc.t}));st="intro";
+ov(`<h2>Level ${l+1}: ${LV[l].n}</h2><div class=cd>${LV[l].nar}</div><p class=s>Sentuh 4 Beacon Ilmu (📜 emas) dan jawab soalnya. Ambil item: ★ skor, S perisai 8 dtk, + nyawa, 2x peluru ganda.</p><button onclick="startLevel(${l})">🚀 Terbang</button>`)}
+function startLevel(l){G={l,t:0,p:{x:90,y:200,vy:0,hp:5,max:5,inv:0,sh:0,db:0,cd:0},b:[],e:[],i:[],f:[],eb:[],pt:[],sp:1,bl:0,bd:0,boss:null,s0:score,c0:acc.c,t0:acc.t};st="play";hov()}
+function restartLv(){score=G.s0;acc.c=G.c0;acc.t=G.t0;startLevel(G.l)}
+function pause(){if(st!="play")return;st="pause";ov(`<h2>⏸ Jeda</h2><button onclick="hov();st='play'">▶ Lanjut</button><button onclick="restartLv()">↻ Ulangi Level</button><button onclick="tm()">🔊/🔇 Suara</button><button onclick="menu()">🏠 Menu Utama</button>`)}
+function over(){st="over";snd(100,.6,"sawtooth");ov(`<h2>Pesawat Jatuh</h2><p>Energi ruhani habis. Jangan menyerah, perbaiki niat dan terbang lagi!</p><button onclick="restartLv()">↻ Ulangi Level ${G.l+1}</button>`)}
+function hurt(){const p=G.p;if(p.sh>0||p.inv>0)return;p.hp--;p.inv=1.5;snd(120,.3,"sawtooth");if(p.hp<=0)over()}
+// Quiz
+function quiz(q,cb,boss){const o=[q[2],q[3],q[4],q[5]].map((t,i)=>({t,ok:i==0}));
+for(let i=3;i>0;i--){const j=Math.random()*(i+1)|0;[o[i],o[j]]=[o[j],o[i]]}
+let first=true,done=false;
+ov((q[0]?`<div class=cd>📖 ${q[0]}</div>`:"<div class=cd>⚔ Soal Kasus Pertarungan Bos</div>")+`<h3>${q[1]}</h3>`+o.map((x,i)=>`<button class=op data-i=${i}>${"ABCD"[i]}. ${x.t}</button>`).join("")+`<div id=fbk></div>`);
+const bs=[...document.querySelectorAll(".op")];
+function show(ok){$("fbk").innerHTML=`<p class="${ok?"ok":"no"}">${ok?"✔ Benar! ":boss?"✘ Salah (−1 HP pesawat). ":"✘ Salah, coba lagi. "}${q[6]}</p>`+(done?`<button id=nx>Lanjut ▶</button>`:"");if(done)$("nx").onclick=()=>{hov();cb()}}
+bs.forEach(b=>b.onclick=()=>{if(done)return;const x=o[b.dataset.i];if(first){first=false;acc.t++;if(x.ok)acc.c++}
+if(x.ok){done=true;b.classList.add("ok");snd(660,.2,"sine");bs.forEach(y=>y.disabled=true);show(true)}
+else{b.classList.add("no");b.disabled=true;snd(160,.25,"sawtooth");if(boss){done=true;G.p.hp--;bs.forEach((y,i)=>{y.disabled=true;if(o[i].ok)y.classList.add("ok")})}show(false)}})}
+function bcb(){const g=G,b=g.boss;b.nx--;if(g.p.hp<=0){over();return}if(b.nx<0){score+=500;fin()}else st="play"}
+// Mini challenge
+function mini(){st="mini";const ph=[["✨","Alam Ruh"],["🤰","Alam Rahim"],["🌍","Alam Dunia"],["⚰️","Alam Barzakh"],["🌅","Yaumul Ba'ats"],["⚖️","Hisab/Mizan"],["🕌","Surga/Neraka"]];
+let nx=0,msg="";const ord=ph.map((_,i)=>i).sort(()=>Math.random()-.5);
+const dr=()=>{ov(`<h3>Tantangan: Susun 7 Fase Eskatologis</h3><p>Ketuk ikon sesuai urutan perjalanan manusia, dari awal hingga akhir. Berikutnya: <b>${nx+1}/7</b></p><div class=gr>`+ord.map(i=>`<button class="ic${i<nx?" ok":""}" data-i=${i}>${ph[i][0]}<small>${ph[i][1]}</small></button>`).join("")+`</div><p class="no">${msg}</p>`);
+document.querySelectorAll(".ic").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(i<nx)return;if(i==nx){nx++;msg="";snd(700+nx*60,.1,"sine");if(nx==7){score+=300;hov();bossGo();return}}else{nx=0;msg="Urutan salah, ulangi dari awal.";snd(150,.2,"sawtooth")}dr()})};dr()}
+function bossGo(){st="intro";ov(`<h2>⚠ Si Ignoransi Muncul!</h2><div class=cd>Pesawat induk bayangan bermahkota retak menghadang. Tembak dia! Tiap 1/6 HP-nya berkurang, ia mengajukan soal kasus. Jawaban salah mengurangi 1 HP pesawatmu.</div><button id=bgo>⚔ Hadapi</button>`);
+$("bgo").onclick=()=>{G.boss={x:W+80,y:200,hp:600,nx:5,f:2};G.e=[];G.i=[];G.f=[];st="play";hov()}}
+function win(){st="win";score+=200;ov(`<h2>✔ Level ${G.l+1} Selesai</h2><p>Skor: ${score}</p><button onclick="intro(${G.l+1})">Level Berikutnya ▶</button>`)}
+function fin(){st="end";const a=acc.t?Math.round(acc.c*100/acc.t):0,bd=a>85?"Mujahid Tauhid Utama":a>=70?"Musafir Akhirat Faqih":"Penuntut Ilmu Eskatologis";
+let hs=+sg("fte_hs")||0;if(score>hs){hs=score;ss("fte_hs",hs)}try{localStorage.removeItem("fte_ck")}catch(e){}
+const d={nama:P.name,nim:P.nim,prodi:P.prodi,skor:score,akurasi:a,lencana:bd,benar:acc.c,total:acc.t};
+let sent="";if(GAS_URL){sent="Mengirim rekap ke dosen...";fetch(GAS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(d)}).then(()=>{$("snt").textContent="✔ Rekap terkirim online."}).catch(()=>{$("snt").textContent="Offline: rekap tidak terkirim, tunjukkan layar ini ke dosen."})}
+ov(`<h2>📜 Laporan Hasil Belajar</h2><p><b>${esc(P.name)}</b><br>NIM: ${esc(P.nim)} · ${esc(P.prodi)}</p><p>Total Skor: <b class=g>${score}</b> (High Score ${hs})<br>Akurasi Jawaban Pertama: <b class=g>${a}%</b> (${acc.c}/${acc.t})</p><div class=bdg>🏅 ${bd}</div>
+<div class=cd>"Barang siapa mengerjakan kebaikan seberat zarrah, niscaya ia akan melihat (balasan)nya." (QS. Al-Zalzalah: 7) · "Sesungguhnya kita milik Allah dan kepada-Nya kita kembali." (QS. Al-Baqarah: 156)</div>
+<p class=g>Tunjukkan layar laporan ini kepada Dosen Pengampu AIK 1 (Pak Eddy Susanto, M.Pd) sebagai bukti penyelesaian tugas gim interaktif.</p><p id=snt class=s>${sent}</p><button onclick="menu()">🏠 Menu Utama</button>`)}
+// Update
+function upd(dt){const g=G,p=g.p,l=g.l;g.t+=dt;
+let ax=(K.ArrowRight||K.d?1:0)-(K.ArrowLeft||K.a?1:0)+jv.x,ay=(K.ArrowDown||K.s?1:0)-(K.ArrowUp||K.w?1:0)+jv.y;const m=Math.hypot(ax,ay);if(m>1){ax/=m;ay/=m}
+p.x=Math.max(24,Math.min(W-24,p.x+ax*270*dt));p.y=Math.max(24,Math.min(H-24,p.y+ay*270*dt));p.vy+=(ay-p.vy)*Math.min(1,dt*10);
+p.cd-=dt;p.inv-=dt;p.sh-=dt;p.db-=dt;
+if((K[" "]||K.x||fh)&&p.cd<=0){p.cd=.17;if(p.db>0){g.b.push({x:p.x+24,y:p.y-8},{x:p.x+24,y:p.y+8})}else g.b.push({x:p.x+24,y:p.y});snd(900,.05)}
+g.b.forEach(b=>b.x+=640*dt);g.b=g.b.filter(b=>b.x<W+20);
+const bo=g.boss;
+if(!bo){g.sp-=dt;if(g.sp<=0){g.sp=Math.max(.45,1.4-.12*l)*(.7+Math.random()*.6);const r=Math.random(),y=30+Math.random()*340;
+g.e.push(r<.4?{k:0,hp:1,r:12,x:W+30,y,vx:-(220+l*25)}:r<.7?{k:1,hp:2,r:15,x:W+30,y,y0:y,vx:-(130+l*15),ph:Math.random()*6}:{k:2,hp:3,r:20,x:W+30,y,vx:-(100+l*10),rot:0})}}
+g.e.forEach(e=>{e.x+=e.vx*dt;if(e.k==1)e.y=Math.max(25,Math.min(375,e.y0+Math.sin(g.t*3+e.ph)*50));if(e.k==2)e.rot+=dt*2});
+g.e=g.e.filter(e=>e.x>-40);
+function boom(x,y,c){for(let i=0;i<10;i++){const a=Math.random()*6.28,s=40+Math.random()*120;g.pt.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:.5,c})}}
+function kill(e){score+=(e.k+1)*10;snd(200,.15,"sawtooth");boom(e.x,e.y,"#ffb74d");if(Math.random()<.2){const r=Math.random();g.i.push({x:e.x,y:e.y,k:r<.5?0:r<.67?1:r<.84?2:3})}}
+g.b.forEach(b=>{for(const e of g.e)if(e.hp>0&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+5){e.hp--;b.x=9999;if(e.hp<=0){kill(e);e.x=-999}break}
+if(bo&&Math.abs(b.x-bo.x)<55&&Math.abs(b.y-bo.y)<60){bo.hp-=5;b.x=9999;boom(b.x>W?bo.x-50:b.x,b.y,"#E0FBFC")}});
+g.e.forEach(e=>{if(e.x>-100&&Math.hypot(p.x-e.x,p.y-e.y)<e.r+14){e.x=-999;boom(e.x,e.y,"#ff7043");hurt()}});
+g.i.forEach(i=>{i.x-=80*dt;if(Math.hypot(p.x-i.x,p.y-i.y)<22){i.x=-999;snd(1200,.15,"sine");if(i.k==0)score+=50;else if(i.k==1)p.sh=8;else if(i.k==2)p.hp=Math.min(p.max,p.hp+1);else p.db=10}});
+g.i=g.i.filter(i=>i.x>-30);
+if(!bo){if(!g.f.length&&g.bd<4){g.bl+=dt;if(g.bl>5){g.f.push({x:W+30,y:60+Math.random()*280});g.bl=0}}
+g.f.forEach(f=>{f.x-=70*dt;if(Math.hypot(p.x-f.x,p.y-f.y)<28){g.f=[];st="quiz";snd(880,.2,"sine");quiz(QB[l][g.bd],()=>{g.bd++;score+=100;g.bl=0;if(g.bd>=4){l<4?win():mini()}else st="play"})}else if(f.x<-30){g.f=[];g.bl=3.5}})}
+if(bo){bo.x+=(620-bo.x)*Math.min(1,dt*2);bo.y=200+Math.sin(g.t*.9)*110;bo.f-=dt;const ph=bo.hp>400?1:bo.hp>200?2:3;
+if(bo.f<=0){bo.f=ph==1?1.1:ph==2?1.3:1.6;const a=Math.atan2(p.y-bo.y,p.x-bo.x),sh=n=>g.eb.push({x:bo.x-40,y:bo.y,vx:Math.cos(n)*230,vy:Math.sin(n)*230});
+if(ph==1)sh(a);else if(ph==2){sh(a-.3);sh(a);sh(a+.3)}else{for(let i=0;i<8;i++)sh(i*Math.PI/4+g.t);sh(a)}snd(120,.2,"sawtooth")}
+g.eb.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt;if(Math.hypot(p.x-b.x,p.y-b.y)<18){b.x=-999;hurt()}});g.eb=g.eb.filter(b=>b.x>-20&&b.x<W+20&&b.y>-20&&b.y<H+20);
+if(st=="play"&&bo.hp<=bo.nx*100){bo.hp=bo.nx*100;st="quiz";quiz(BQ[5-bo.nx],bcb,true)}}
+g.pt.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt});g.pt=g.pt.filter(q=>q.l>0)}
+// Draw
+const SR=Array.from({length:90},()=>[Math.random()*W,Math.random()*H,20+Math.random()*120,.3+Math.random()*.7]);
+function poly(a,f,s){X.beginPath();a.forEach((q,i)=>X[i?"lineTo":"moveTo"](q[0],q[1]));X.closePath();if(f){X.fillStyle=f;X.fill()}if(s){X.strokeStyle=s;X.stroke()}}
+function bg(){const L=LV[G?G.l:0],t=G?G.t:0;let g=X.createLinearGradient(0,0,0,H);g.addColorStop(0,L.b[0]);g.addColorStop(1,L.b[1]);X.fillStyle=g;X.fillRect(0,0,W,H);
+L.nb.forEach((c,i)=>{const x=((i*400+300-t*8*(i+1))%1000+1000)%1000-100,y=100+i*180,r=X.createRadialGradient(x,y,0,x,y,220);r.addColorStop(0,c);r.addColorStop(1,"rgba(0,0,0,0)");X.fillStyle=r;X.fillRect(0,0,W,H)});
+X.fillStyle=L.sc;SR.forEach(s=>{const x=((s[0]-t*s[2])%W+W)%W;X.globalAlpha=s[3];X.fillRect(x,s[1],s[2]/50+1,s[2]/50+1)});X.globalAlpha=1;
+if(G&&G.l==4){X.fillStyle="#FFD70055";X.fillRect(0,H-32,W,3);const r=X.createLinearGradient(0,H-30,0,H);r.addColorStop(0,"#000");r.addColorStop(1,"#3a0a0a");X.fillStyle=r;X.fillRect(0,H-30,W,30)}}
+function draw(){bg();if(!G)return;const g=G,p=g.p;X.font="11px system-ui";X.textAlign="center";
+g.i.forEach(i=>{X.fillStyle=["#FFD700","#E0FBFC","#4caf50","#00e5ff"][i.k];X.beginPath();X.arc(i.x,i.y,11,0,7);X.fill();X.fillStyle="#0B132B";X.fillText(["★","S","+","2x"][i.k],i.x,i.y+4)});
+g.f.forEach(f=>{const s=1+Math.sin(g.t*5)*.15;poly([[f.x,f.y-24*s],[f.x+20*s,f.y],[f.x,f.y+24*s],[f.x-20*s,f.y]],"#FFD70033","#FFD700");X.fillStyle="#FFD700";X.fillText("📜 Beacon Ilmu",f.x,f.y+38)});
+g.e.forEach(e=>{if(e.k==0){X.fillStyle="#ff704355";poly([[e.x,e.y-8],[e.x+60,e.y],[e.x,e.y+8]],"#ff704355");X.fillStyle="#ff7043";X.beginPath();X.arc(e.x,e.y,e.r,0,7);X.fill()}
+else if(e.k==1){poly([[e.x-15,e.y],[e.x,e.y-15],[e.x+15,e.y],[e.x,e.y+15]],"#7b1fa2","#e040fb");X.fillStyle="#f44";X.fillRect(e.x-6,e.y-2,12,4)}
+else{poly(Array.from({length:8},(_,i)=>{const a=e.rot+i*.785,r=e.r*(i%2?.8:1.05);return[e.x+Math.cos(a)*r,e.y+Math.sin(a)*r]}),"#6d5c4a","#b89b72")}});
+const b=g.boss;if(b){poly([[b.x-60,b.y],[b.x-20,b.y-50],[b.x+50,b.y-35],[b.x+60,b.y],[b.x+50,b.y+35],[b.x-20,b.y+50]],"#05050a","#6a1b9a");
+poly([[b.x-30,b.y-48],[b.x-22,b.y-72],[b.x-8,b.y-54],[b.x,b.y-78],[b.x+10,b.y-52],[b.x+24,b.y-70],[b.x+30,b.y-44]],"#b8860b","#FFD700");X.fillStyle="#f22";X.fillRect(b.x-34,b.y-8,14,6);X.fillRect(b.x-34,b.y+8,14,6);
+X.fillStyle="#222";X.fillRect(200,28,400,10);X.fillStyle="#d32f2f";X.fillRect(200,28,400*Math.max(0,b.hp)/600,10);X.fillStyle="#FFD700";X.fillText("Si Ignoransi · Fase "+(b.hp>400?1:b.hp>200?2:3),400,22)}
+X.fillStyle="#d500f9";g.eb.forEach(e=>{X.beginPath();X.arc(e.x,e.y,6,0,7);X.fill()});
+X.shadowColor="#FFD700";X.shadowBlur=8;X.fillStyle="#E0FBFC";g.b.forEach(q=>X.fillRect(q.x-9,q.y-2,18,4));X.shadowBlur=0;
+if(g.p.hp>0){X.save();X.translate(p.x,p.y);X.rotate(p.vy*.25);if(p.inv>0&&Math.floor(p.inv*15)%2)X.globalAlpha=.4;
+const fl=14+Math.random()*10,fg=X.createLinearGradient(-18,0,-18-fl,0);fg.addColorStop(0,"#FFD700");fg.addColorStop(1,"rgba(0,255,200,0)");poly([[-16,-6],[-18-fl,0],[-16,6]],fg);
+poly([[26,0],[4,-8],[-8,-22],[-16,-22],[-12,-6],[-18,-6],[-18,6],[-12,6],[-16,22],[-8,22],[4,8]],"#cfd8dc","#FFD700");X.fillStyle="#006A4E";X.beginPath();X.ellipse(6,0,8,4,0,0,7);X.fill();
+if(p.sh>0){X.strokeStyle="#E0FBFC";X.globalAlpha=.7;X.beginPath();X.arc(0,0,32,0,7);X.stroke()}X.restore();X.globalAlpha=1;
+X.fillStyle="#E0FBFC";X.font="10px system-ui";X.fillText(P.name+" · "+P.nim,p.x,p.y-34)}
+g.pt.forEach(q=>{X.globalAlpha=Math.max(0,q.l*2);X.fillStyle=q.c;X.fillRect(q.x,q.y,3,3)});X.globalAlpha=1;
+X.textAlign="left";X.font="bold 13px system-ui";X.fillStyle="#FFD700";X.fillText("Lv"+(g.l+1)+" "+LV[g.l].n,10,18);X.fillStyle="#E0FBFC";X.fillText("Skor "+score,10,36);X.fillStyle="#ff5252";X.fillText("♥".repeat(Math.max(0,p.hp)),10,54);
+X.fillStyle="#FFD700";X.fillText("📜 "+g.bd+"/4"+(p.sh>0?"  🛡"+Math.ceil(p.sh):"")+(p.db>0?"  2x"+Math.ceil(p.db):""),10,72)}
+function loop(ts){requestAnimationFrame(loop);const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(st=="play")upd(dt);draw()}
+// Input
+addEventListener("keydown",e=>{const k=e.key.length>1?e.key:e.key.toLowerCase();K[k]=1;if([" ","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)&&st=="play")e.preventDefault();if(k=="p"||k=="Escape"){st=="play"?pause():st=="pause"&&(hov(),st="play")}});
+addEventListener("keyup",e=>{K[e.key.length>1?e.key:e.key.toLowerCase()]=0});
+const J=$("joy"),kn=$("kn");function jm(e){const r=J.getBoundingClientRect();let dx=(e.clientX-r.left-r.width/2)/(r.width/2),dy=(e.clientY-r.top-r.height/2)/(r.height/2);const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}jv.x=Math.abs(dx)<.2?0:dx;jv.y=Math.abs(dy)<.2?0:dy;kn.style.transform=`translate(${dx*30}px,${dy*30}px)`}
+J.onpointerdown=e=>{J.setPointerCapture(e.pointerId);jm(e)};J.onpointermove=e=>{if(J.hasPointerCapture(e.pointerId))jm(e)};J.onpointerup=J.onpointercancel=()=>{jv.x=jv.y=0;kn.style.transform=""};
+const F=$("fire");F.onpointerdown=e=>{F.setPointerCapture(e.pointerId);fh=true};F.onpointerup=F.onpointercancel=()=>fh=false;
+function rs(){const s=Math.min(innerWidth/W,innerHeight/H);C.style.width=W*s+"px";C.style.height=H*s+"px"}
+addEventListener("resize",rs);rs();menu();requestAnimationFrame(loop);
+</script></body></html>
